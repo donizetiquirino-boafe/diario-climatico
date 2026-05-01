@@ -343,7 +343,7 @@ function tick() {
 
 async function loadAll() {
   document.getElementById("lastUpdate").textContent = new Date().toLocaleTimeString("pt-BR");
-  countdown = 1800;
+  countdown = 600;
   await Promise.all([loadDays(), loadMonth(), loadYear(), loadCharts()]);
 }
 
