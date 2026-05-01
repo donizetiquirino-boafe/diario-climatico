@@ -54,7 +54,11 @@ def get_dados(start=None, end=None, limit=5000):
 
 @app.route("/")
 def index():
-    return send_file(HTML_FILE)
+    resp = send_file(HTML_FILE)
+    resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
+    return resp
 
 
 @app.route("/api/dados")
