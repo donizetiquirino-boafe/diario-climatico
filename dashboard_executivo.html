@@ -332,13 +332,13 @@ async function loadCharts() {
   ]},options:{responsive:true,plugins:{legend:{labels:{color:tickColor,font:{size:11}}}},scales:scaleOpts}});
 }
 
-let countdown = 1800;
+let countdown = 600;
 function tick() {
   const m=String(Math.floor(countdown/60)).padStart(2,"0");
   const s=String(countdown%60).padStart(2,"0");
   document.getElementById("nextRefresh").textContent=m+":"+s;
   countdown--;
-  if (countdown<0){countdown=1800;loadAll();}
+  if (countdown<0){countdown=600;loadAll();}
 }
 
 async function loadAll() {
