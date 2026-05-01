@@ -214,8 +214,8 @@ async function loadDays() {
   const tod = today(), yes = yesterday();
   const sel = "temp_max,temp_min,chuva_mm,umidade,data_registro";
   const [tRows, yRows] = await Promise.all([
-    qEq(sel, "data_registro", tod),
-    qEq(sel, "data_registro", yes)
+    qRange(sel, "data_registro", tod, tod, null),
+    qRange(sel, "data_registro", yes, yes, null)
   ]);
   const ta = agg(tRows,"temp_max"), ti = agg(tRows,"temp_min"), tc = agg(tRows,"chuva_mm"), tu = agg(tRows,"umidade");
   const ya = agg(yRows,"temp_max"), yi = agg(yRows,"temp_min"), yc = agg(yRows,"chuva_mm"), yu = agg(yRows,"umidade");
