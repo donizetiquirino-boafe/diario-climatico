@@ -4,7 +4,17 @@ import socketserver
 
 PORT = int(os.environ.get("PORT", 8766))
 
+# Diretório onde este script está localizado
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+print(f"Iniciando servidor na porta {PORT}")
+print(f"Servindo arquivos de: {BASE_DIR}")
+print(f"Arquivos disponíveis: {os.listdir(BASE_DIR)}")
+
 class DashboardHandler(http.server.SimpleHTTPRequestHandler):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, directory=BASE_DIR, **kwargs)
+
     def do_GET(self):
         # Redireciona raiz para o dashboard
         if self.path == "/" or self.path == "":
@@ -12,8 +22,9 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
         return super().do_GET()
 
     def log_message(self, format, *args):
-        pass  # Silencia logs desnecessários
+        print(f"[{self.address_string()}] {format % args}")
 
-print(f"Dashboard Executivo rodando na porta {PORT}")
 with socketserver.TCPServer(("0.0.0.0", PORT), DashboardHandler) as httpd:
+    httpd.allow_reuse_address = True
+    print(f"Dashboard no ar! Porta {PORT}")
     httpd.serve_forever()
