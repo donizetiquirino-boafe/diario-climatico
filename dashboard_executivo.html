@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diario Climatico - Painel Executivo</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{--bg:#0B1120;--card:#151E32;--card2:#101827;--inp:#1E2A40;--brd:#2D3B55;--blue:#00C6FF;--green:#22C55E;--red:#DC3545;--pur:#A78BFA;--yel:#FBBF24;--org:#FB923C;--tx:#F1F5F9;--mt:#94A3B8}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;padding:16px}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:18px 24px;background:var(--card);border:1px solid var(--brd);border-radius:18px;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+.htitle{font-size:22px;font-weight:800;background:linear-gradient(90deg,var(--blue),var(--pur));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hsub{font-size:12px;color:var(--mt);margin-top:2px}
+.hbadge{background:var(--inp);border:1px solid var(--brd);border-radius:10px;padding:6px 14px;font-size:13px;color:var(--mt)}
+.hbadge b{color:var(--blue)}
+.hbtn{background:linear-gradient(135deg,var(--blue),#0080aa);border:none;border-radius:10px;padding:9px 18px;color:#fff;font-weight:600;cursor:pointer;font-size:13px;transition:.2s}
+.hbtn:hover{opacity:.85}
+.alert-box{display:none;background:linear-gradient(135deg,#7c1d1d,#991b1b);border:1px solid var(--red);border-radius:14px;padding:12px 20px;margin-bottom:16px;font-size:14px;font-weight:500}
+.stitle{font-size:13px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px;padding-left:4px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:8px}
+.gc{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.card{background:var(--card);border:1px solid var(--brd);border-radius:18px;padding:20px;position:relative;overflow:hidden}
+.card::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;border-radius:18px 18px 0 0}
+.cb::before{background:linear-gradient(90deg,var(--blue),#0080aa)}
+.cg::before{background:linear-gradient(90deg,var(--green),#15803d)}
+.cr::before{background:linear-gradient(90deg,var(--red),#991b1b)}
+.cp::before{background:linear-gradient(90deg,var(--pur),#7c3aed)}
+.cy::before{background:linear-gradient(90deg,var(--yel),#d97706)}
+.co::before{background:linear-gradient(90deg,var(--org),#c2410c)}
+.clbl{font-size:11px;font-weight:600;color:var(--mt);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.cval{font-size:30px;font-weight:800;line-height:1;margin-bottom:4px}
+.csub{font-size:12px;color:var(--mt)}
+.cico{position:absolute;top:18px;right:18px;font-size:22px;opacity:.7}
+.dcard{background:var(--card);border:1px solid var(--brd);border-radius:18px;padding:22px;position:relative;overflow:hidden}
+.dcard::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;border-radius:18px 18px 0 0}
+.dcard.hoje::before{background:linear-gradient(90deg,var(--blue),var(--pur))}
+.dcard.ontem::before{background:linear-gradient(90deg,var(--mt),#475569)}
+.dtitle{font-size:17px;font-weight:700;margin-bottom:2px}
+.ddate{font-size:12px;color:var(--mt);margin-bottom:16px}
+.dstats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sitem{background:var(--inp);border:1px solid var(--brd);border-radius:12px;padding:12px}
+.sico{font-size:18px;margin-bottom:4px}
+.sval{font-size:20px;font-weight:700}
+.slbl{font-size:11px;color:var(--mt)}
+.rcard{background:var(--card2);border:1px solid var(--brd);border-radius:14px;padding:16px;display:flex;align-items:center;gap:14px}
+.rico{font-size:30px;min-width:44px;text-align:center}
+.rlbl{font-size:11px;color:var(--mt);font-weight:600;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px}
+.rval{font-size:20px;font-weight:800;margin-bottom:2px}
+.rdate{font-size:12px;color:var(--mt)}
+.cchart{background:var(--card);border:1px solid var(--brd);border-radius:18px;padding:20px}
+.ctitle{font-size:14px;font-weight:700;margin-bottom:16px}
+.ctitle small{color:var(--mt);font-weight:400;font-size:12px;margin-left:8px}
+canvas{max-height:220px}
+.spin{display:flex;align-items:center;justify-content:center;height:100px;color:var(--mt);font-size:14px;gap:10px}
+.spin::before{content:"";width:18px;height:18px;border:2px solid var(--brd);border-top-color:var(--blue);border-radius:50%;animation:sp .8s linear infinite;flex-shrink:0}
+@keyframes sp{to{transform:rotate(360deg)}}
+.footer{text-align:center;color:var(--mt);font-size:12px;margin-top:20px;padding:16px}
+.footer b{color:var(--blue)}
+@media(max-width:768px){.g2,.g3,.g4,.gc{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div style="display:flex;align-items:center;gap:14px">
+    <span style="font-size:36px">🌦️</span>
+    <div>
+      <div class="htitle">Diário Climático</div>
+      <div class="hsub">Painel Executivo — Visualização em tempo real</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <div class="hbadge">Atualizado: <b id="lastUpdate">—</b></div>
+    <div class="hbadge">Próx. refresh: <b id="nextRefresh">30:00</b></div>
+    <button class="hbtn" onclick="loadAll()">↻ Atualizar</button>
+  </div>
+</div>
+
+<div class="alert-box" id="alertBox"></div>
+
+<div class="stitle">📅 Ontem &amp; Hoje</div>
+<div class="g2" id="dayCards"><div class="spin">Carregando...</div></div>
+
+<div class="stitle">📆 Resumo do Mês</div>
+<div class="g3" id="monthRecords"><div class="spin">Carregando...</div></div>
+<div class="g4" id="monthStats"></div>
+
+<div class="stitle">📅 Resumo do Ano</div>
+<div class="g3" id="yearRecords"><div class="spin">Carregando...</div></div>
+<div class="g4" id="yearStats"></div>
+
+<div class="stitle">📊 Gráficos</div>
+<div class="gc">
+  <div class="cchart"><div class="ctitle">🌡️ Temperatura <small>últimos 30 dias</small></div><canvas id="chartTemp"></canvas></div>
+  <div class="cchart"><div class="ctitle">🌧️ Chuva Diária <small>último mês</small></div><canvas id="chartChuva"></canvas></div>
+</div>
+<div class="gc">
+  <div class="cchart"><div class="ctitle">💧 Umidade Média <small>por mês no ano</small></div><canvas id="chartUmid"></canvas></div>
+  <div class="cchart"><div class="ctitle">☁️ Chuva Mensal <small>acumulado por mês</small></div><canvas id="chartChuvaMes"></canvas></div>
+</div>
+
+<div class="footer">Diário Climático &mdash; Painel Executivo &mdash; <b>Sistema Meteorológico</b></div>
+
+<script>
+const _SB_URL = "https://nqidjguwofidfxxiidwe.supabase.co";
+const _SB_KEY = "sb_publishable_co7vuzhbHU5rym-wBJFxyA_K6dA1J0b";
+const sb = window.supabase.createClient(_SB_URL, _SB_KEY);
+
+async function qEq(sel, col, val) {
+  const {data,error} = await sb.from("registros_clima").select(sel).eq(col, val);
+  if (error) { console.error(error); return []; }
+  return data || [];
+}
+
+async function qRange(sel, col, from, to, lim) {
+  let q = sb.from("registros_clima").select(sel).gte(col, from).lte(col, to);
+  if (lim) q = q.limit(lim);
+  const {data,error} = await q;
+  if (error) { console.error(error); return []; }
+  return data || [];
+}
+
+async function qGte(sel, col, val, ord, lim) {
+  let q = sb.from("registros_clima").select(sel).gte(col, val);
+  if (ord) q = q.order(ord, {ascending: true});
+  if (lim) q = q.limit(lim);
+  const {data,error} = await q;
+  if (error) { console.error(error); return []; }
+  return data || [];
+}
+
+function fmt(v, unit) {
+  if (v === null || v === undefined) return "—";
+  return v + (unit || "");
+}
+
+function fmtDate(d) {
+  if (!d) return "—";
+  const p = d.split("-");
+  return p[2] + "/" + p[1] + "/" + p[0];
+}
+
+function today() {
+  return new Date().toISOString().split("T")[0];
+}
+
+function yesterday() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return d.toISOString().split("T")[0];
+}
+
+function getMonthRange() {
+  const d = new Date();
+  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,"0");
+  const last = new Date(y, d.getMonth()+1, 0).getDate();
+  return {start: y+"-"+m+"-01", end: y+"-"+m+"-"+String(last).padStart(2,"0")};
+}
+
+function getYearRange() {
+  const y = new Date().getFullYear();
+  return {start: y+"-01-01", end: y+"-12-31"};
+}
+
+function nomeMes(n) {
+  return ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"][n];
+}
+
+function dayCard(title, cls, date, max, min, chuva, umid) {
+  return `<div class="dcard ${cls}">
+    <div class="dtitle">${title}</div>
+    <div class="ddate">📅 ${fmtDate(date)}</div>
+    <div class="dstats">
+      <div class="sitem"><div class="sico">🔥</div><div class="sval">${fmt(max,"°C")}</div><div class="slbl">Temp Máx</div></div>
+      <div class="sitem"><div class="sico">❄️</div><div class="sval">${fmt(min,"°C")}</div><div class="slbl">Temp Mín</div></div>
+      <div class="sitem"><div class="sico">🌧️</div><div class="sval">${fmt(chuva," mm")}</div><div class="slbl">Chuva</div></div>
+      <div class="sitem"><div class="sico">💧</div><div class="sval">${fmt(umid,"%")}</div><div class="slbl">Umidade</div></div>
+    </div>
+  </div>`;
+}
+
+function rCard(ico, lbl, val, date) {
+  return `<div class="rcard"><div class="rico">${ico}</div><div><div class="rlbl">${lbl}</div><div class="rval">${val}</div><div class="rdate">${date}</div></div></div>`;
+}
+
+function statCard(cls, ico, lbl, val, sub) {
+  return `<div class="card ${cls}"><div class="cico">${ico}</div><div class="clbl">${lbl}</div><div class="cval">${val}</div><div class="csub">${sub}</div></div>`;
+}
+
+function agg(rows, field) {
+  const vals = rows.map(r => parseFloat(r[field])).filter(v => !isNaN(v));
+  if (!vals.length) return {avg:null, sum:null, max:null, min:null};
+  const sum = vals.reduce((a,b)=>a+b,0);
+  return {avg:+(sum/vals.length).toFixed(1), sum:+sum.toFixed(1), max:Math.max(...vals), min:Math.min(...vals)};
+}
+
+let charts = {};
+function destroyChart(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+
+function makeChart(id, cfg) {
+  destroyChart(id);
+  const ctx = document.getElementById(id).getContext("2d");
+  charts[id] = new Chart(ctx, cfg);
+}
+
+async function loadDays() {
+  const tod = today(), yes = yesterday();
+  const sel = "temp_max,temp_min,chuva_mm,umidade,data_registro";
+  const [tRows, yRows] = await Promise.all([
+    qEq(sel, "data_registro", tod),
+    qEq(sel, "data_registro", yes)
+  ]);
+  const ta = agg(tRows,"temp_max"), ti = agg(tRows,"temp_min"), tc = agg(tRows,"chuva_mm"), tu = agg(tRows,"umidade");
+  const ya = agg(yRows,"temp_max"), yi = agg(yRows,"temp_min"), yc = agg(yRows,"chuva_mm"), yu = agg(yRows,"umidade");
+
+  const alerts = [];
+  if (ta.max !== null && ta.max >= 35) alerts.push("🔥 Temperatura máxima de " + ta.max + "°C hoje!");
+  if (tc.sum !== null && tc.sum >= 50) alerts.push("🌧️ Chuva intensa: " + tc.sum + "mm acumulados hoje!");
+  const ab = document.getElementById("alertBox");
+  if (alerts.length) { ab.innerHTML = alerts.join(" &nbsp;|&nbsp; "); ab.style.display = "block"; }
+  else { ab.style.display = "none"; }
+
+  document.getElementById("dayCards").innerHTML =
+    dayCard("Hoje", "hoje", tod, ta.max, ti.min ?? agg(tRows,"temp_min").min, tc.sum, tu.avg) +
+    dayCard("Ontem", "ontem", yes, ya.max, yi.min ?? agg(yRows,"temp_min").min, yc.sum, yu.avg);
+}
+
+async function loadMonth() {
+  const mr = getMonthRange();
+  const rows = await qRange("data_registro,temp_max,temp_min,chuva_mm,umidade", "data_registro", mr.start, mr.end, null);
+  if (!rows.length) {
+    document.getElementById("monthRecords").innerHTML = "<div style='color:var(--mt);font-size:13px;grid-column:1/-1'>Sem dados no mês atual.</div>";
+    return;
+  }
+
+  const byDay = {};
+  for (const r of rows) {
+    const d = r.data_registro;
+    if (!byDay[d]) byDay[d] = [];
+    byDay[d].push(r);
+  }
+
+  let coldDay={date:"—",val:999}, hotDay={date:"—",val:-999}, rainDay={date:"—",val:-1};
+  for (const [d, dr] of Object.entries(byDay)) {
+    const mn = agg(dr,"temp_min").min;
+    const mx = agg(dr,"temp_max").max;
+    const ch = agg(dr,"chuva_mm").sum;
+    if (mn !== null && mn < coldDay.val) coldDay = {date:d, val:mn};
+    if (mx !== null && mx > hotDay.val) hotDay = {date:d, val:mx};
+    if (ch !== null && ch > rainDay.val) rainDay = {date:d, val:ch};
+  }
+
+  document.getElementById("monthRecords").innerHTML =
+    rCard("🥶","Dia mais frio", coldDay.val !== 999 ? coldDay.val+"°C" : "—", fmtDate(coldDay.date)) +
+    rCard("🔥","Dia mais quente", hotDay.val !== -999 ? hotDay.val+"°C" : "—", fmtDate(hotDay.date)) +
+    rCard("🌧️","Mais chuva no dia", rainDay.val !== -1 ? rainDay.val+" mm" : "—", fmtDate(rainDay.date));
+
+  const totChuva = agg(rows,"chuva_mm").sum;
+  const avgUmid = agg(rows,"umidade").avg;
+  const avgTemp = (() => {
+    const allT = rows.map(r=>parseFloat(r.temp_max)).filter(v=>!isNaN(v));
+    return allT.length ? +(allT.reduce((a,b)=>a+b,0)/allT.length).toFixed(1) : null;
+  })();
+  const totalDias = Object.keys(byDay).length;
+
+  document.getElementById("monthStats").innerHTML =
+    statCard("cb","🌧️","Total de Chuva", fmt(totChuva," mm"), "no mês atual") +
+    statCard("cp","💧","Umidade Média", fmt(avgUmid,"%"), "no mês atual") +
+    statCard("cy","🌡️","Temp. Média Máx", fmt(avgTemp,"°C"), "no mês atual") +
+    statCard("cg","📅","Dias Registrados", totalDias, "com dados no mês");
+}
+
+async function loadYear() {
+  const yr = getYearRange();
+  const rows = await qRange("data_registro,temp_max,temp_min,chuva_mm,umidade", "data_registro", yr.start, yr.end, 5000);
+  if (!rows.length) {
+    document.getElementById("yearRecords").innerHTML = "<div style='color:var(--mt);font-size:13px;grid-column:1/-1'>Sem dados no ano atual.</div>";
+    return;
+  }
+
+  const byMonth = {};
+  for (const r of rows) {
+    const m = r.data_registro.substring(0,7);
+    if (!byMonth[m]) byMonth[m] = [];
+    byMonth[m].push(r);
+  }
+
+  let coldM={month:"—",val:999}, hotM={month:"—",val:-999}, rainM={month:"—",val:-1};
+  for (const [m, mr2] of Object.entries(byMonth)) {
+    const mn = agg(mr2,"temp_min").min;
+    const mx = agg(mr2,"temp_max").max;
+    const ch = agg(mr2,"chuva_mm").sum;
+    if (mn !== null && mn < coldM.val) coldM = {month:m, val:mn};
+    if (mx !== null && mx > hotM.val) hotM = {month:m, val:mx};
+    if (ch !== null && ch > rainM.val) rainM = {month:m, val:ch};
+  }
+
+  function mLabel(ym) {
+    if (!ym || ym==="—") return "—";
+    const p = ym.split("-");
+    return nomeMes(parseInt(p[1])-1)+"/"+p[0];
+  }
+
+  document.getElementById("yearRecords").innerHTML =
+    rCard("🥶","Mês mais frio", coldM.val !== 999 ? coldM.val+"°C" : "—", mLabel(coldM.month)) +
+    rCard("🔥","Mês mais quente", hotM.val !== -999 ? hotM.val+"°C" : "—", mLabel(hotM.month)) +
+    rCard("🌧️","Mês que mais choveu", rainM.val !== -1 ? rainM.val+" mm" : "—", mLabel(rainM.month));
+
+  const totChuvaAno = agg(rows,"chuva_mm").sum;
+  const totalMeses = Object.keys(byMonth).length;
+  const avgUmidAno = agg(rows,"umidade").avg;
+  const allMax = rows.map(r=>parseFloat(r.temp_max)).filter(v=>!isNaN(v));
+  const avgTempAno = allMax.length ? +(allMax.reduce((a,b)=>a+b,0)/allMax.length).toFixed(1) : null;
+
+  document.getElementById("yearStats").innerHTML =
+    statCard("cb","🌧️","Chuva Total Anual", fmt(totChuvaAno," mm"), "acumulado no ano") +
+    statCard("cp","💧","Umidade Média", fmt(avgUmidAno,"%"), "no ano") +
+    statCard("cy","🌡️","Temp. Média Máx", fmt(avgTempAno,"°C"), "no ano") +
+    statCard("cg","📅","Meses com Dados", totalMeses, "registrados no ano");
+}
+
+async function loadCharts() {
+  const d30 = new Date(); d30.setDate(d30.getDate()-30);
+  const d30str = d30.toISOString().split("T")[0];
+  const rows30 = await qGte("data_registro,temp_max,temp_min,chuva_mm,umidade", "data_registro", d30str, "data_registro", 500);
+
+  const byDay = {};
+  for (const r of rows30) {
+    const d = r.data_registro;
+    if (!byDay[d]) byDay[d] = [];
+    byDay[d].push(r);
+  }
+  const labels = Object.keys(byDay).map(d => d.split("-")[2]+"/"+d.split("-")[1]);
+  const maxT = Object.values(byDay).map(dr => agg(dr,"temp_max").max);
+  const minT = Object.values(byDay).map(dr => agg(dr,"temp_min").min);
+  const chuvas = Object.values(byDay).map(dr => agg(dr,"chuva_mm").sum);
+
+  makeChart("chartTemp", {
+    type:"line",
+    data:{labels, datasets:[
+      {label:"Máx (°C)",data:maxT,borderColor:"#DC3545",backgroundColor:"rgba(220,53,69,.1)",tension:.4,fill:true,pointRadius:3},
+      {label:"Mín (°C)",data:minT,borderColor:"#00C6FF",backgroundColor:"rgba(0,198,255,.1)",tension:.4,fill:true,pointRadius:3}
+    ]},
+    options:{responsive:true,plugins:{legend:{labels:{color:"#94A3B8",font:{size:11}}}},scales:{x:{ticks:{color:"#94A3B8",maxTicksLimit:10},grid:{color:"#1E2A40"}},y:{ticks:{color:"#94A3B8"},grid:{color:"#1E2A40"}}}}
+  });
+
+  makeChart("chartChuva", {
+    type:"bar",
+    data:{labels, datasets:[{label:"Chuva (mm)",data:chuvas,backgroundColor:"rgba(0,198,255,.7)",borderColor:"#00C6FF",borderRadius:6}]},
+    options:{responsive:true,plugins:{legend:{labels:{color:"#94A3B8",font:{size:11}}}},scales:{x:{ticks:{color:"#94A3B8",maxTicksLimit:10},grid:{color:"#1E2A40"}},y:{ticks:{color:"#94A3B8"},grid:{color:"#1E2A40"}}}}
+  });
+
+  const yr = getYearRange();
+  const rowsYear2 = await qRange("data_registro,chuva_mm,umidade", "data_registro", yr.start, yr.end, 5000);
+
+  const byMes = {};
+  for (const r of rowsYear2) {
+    const m = parseInt(r.data_registro.split("-")[1]) - 1;
+    if (!byMes[m]) byMes[m] = [];
+    byMes[m].push(r);
+  }
+  const mesLabels = Array.from({length:12},(_,i)=>nomeMes(i));
+  const mesUmid = mesLabels.map((_,i) => byMes[i] ? agg(byMes[i],"umidade").avg : null);
+  const mesChuva = mesLabels.map((_,i) => byMes[i] ? agg(byMes[i],"chuva_mm").sum : null);
+
+  makeChart("chartUmid", {
+    type:"bar",
+    data:{labels:mesLabels, datasets:[{label:"Umidade Média (%)",data:mesUmid,backgroundColor:"rgba(167,139,250,.7)",borderColor:"#A78BFA",borderRadius:6}]},
+    options:{responsive:true,plugins:{legend:{labels:{color:"#94A3B8",font:{size:11}}}},scales:{x:{ticks:{color:"#94A3B8"},grid:{color:"#1E2A40"}},y:{ticks:{color:"#94A3B8"},grid:{color:"#1E2A40"},max:100}}}
+  });
+
+  makeChart("chartChuvaMes", {
+    type:"bar",
+    data:{labels:mesLabels, datasets:[{label:"Chuva (mm)",data:mesChuva,backgroundColor:"rgba(34,197,94,.7)",borderColor:"#22C55E",borderRadius:6}]},
+    options:{responsive:true,plugins:{legend:{labels:{color:"#94A3B8",font:{size:11}}}},scales:{x:{ticks:{color:"#94A3B8"},grid:{color:"#1E2A40"}},y:{ticks:{color:"#94A3B8"},grid:{color:"#1E2A40"}}}}
+  });
+}
+
+let countdown = 1800;
+function updateCountdown() {
+  const m = String(Math.floor(countdown/60)).padStart(2,"0");
+  const s = String(countdown%60).padStart(2,"0");
+  document.getElementById("nextRefresh").textContent = m+":"+s;
+  countdown--;
+  if (countdown < 0) { countdown = 1800; loadAll(); }
+}
+
+async function loadAll() {
+  document.getElementById("lastUpdate").textContent = new Date().toLocaleTimeString("pt-BR");
+  countdown = 1800;
+  await Promise.all([loadDays(), loadMonth(), loadYear(), loadCharts()]);
+}
+
+loadAll();
+setInterval(updateCountdown, 1000);
+</script>
+</body>
+</html>
