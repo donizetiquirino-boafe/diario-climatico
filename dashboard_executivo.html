@@ -94,12 +94,12 @@ canvas{max-height:220px}
     <span style="font-size:36px">🌡️</span>
     <div>
       <div class="htitle">Di&aacute;rio Clim&aacute;tico</div>
-      <div class="hsub">Painel Executivo &mdash; Visualiza&ccedil;&atilde;o em tempo real</div>
+      <div class="hsub">Painel Executivo</div>
     </div>
   </div>
-  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-    <div class="hbadge">Atualizado: <b id="lastUpdate">&mdash;</b> &nbsp;|&nbsp; Pr&oacute;x. refresh: <b id="nextRefresh">10:00</b></div>
-    <button class="hbtn" id="btnAtualizar">&#8635; Atualizar</button>
+  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+    <div class="hbadge">Atualizado: <b id="lastUpdate">&mdash;</b> &nbsp;|&nbsp; Refresh: <b id="nextRefresh">10:00</b></div>
+    <button class="hbtn" id="btnAtualizar" style="width:100%;text-align:center">&#8635; Atualizar</button>
   </div>
 </div>
 
@@ -418,7 +418,7 @@ function tick() {
 }
 
 async function loadAll() {
-  document.getElementById("lastUpdate").textContent = new Date().toLocaleTimeString("pt-BR");
+  document.getElementById("lastUpdate").textContent = new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
   countdown = 600;
   await Promise.all([loadDays(), loadMonth(), loadYear(), loadCharts()]);
 }
