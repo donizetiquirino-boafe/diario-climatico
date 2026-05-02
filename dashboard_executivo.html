@@ -59,9 +59,35 @@ canvas{max-height:220px}
 .footer{text-align:center;color:var(--mt);font-size:12px;margin-top:20px;padding:16px}
 .footer b{color:var(--blue)}
 @media(max-width:768px){.g2,.g3,.g4,.gc{grid-template-columns:1fr}}
+
+/* Login Wall */
+#loginWall{display:flex;align-items:center;justify-content:center;min-height:100vh;position:fixed;inset:0;background:var(--bg);z-index:999}
+.login-box{background:var(--card);border:1px solid var(--brd);border-radius:24px;padding:40px 32px;text-align:center;max-width:360px;width:100%}
+.login-icon{font-size:52px;margin-bottom:16px}
+.login-title{font-size:22px;font-weight:800;background:linear-gradient(90deg,var(--blue),var(--pur));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px}
+.login-sub{font-size:13px;color:var(--mt);margin-bottom:28px}
+.btn-google{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;background:#fff;color:#222;border:none;border-radius:12px;padding:13px 0;font-size:15px;font-weight:600;cursor:pointer;transition:.2s;font-family:'Inter',sans-serif}
+.btn-google:hover{opacity:.9;transform:translateY(-1px)}
+.btn-google img{width:20px;height:20px}
 </style>
 </head>
 <body>
+
+<!-- Login Wall -->
+<div id="loginWall">
+  <div class="login-box">
+    <div class="login-icon">&#127814;</div>
+    <div class="login-title">Di&aacute;rio Clim&aacute;tico</div>
+    <div class="login-sub">Painel Executivo &mdash; Fa&ccedil;a login para continuar</div>
+    <button class="btn-google" id="btnLogin">
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+      Entrar com Google
+    </button>
+  </div>
+</div>
+
+<!-- Main Dashboard -->
+<div id="mainContent" style="display:none">
 
 <div class="hdr">
   <div style="display:flex;align-items:center;gap:14px">
@@ -73,8 +99,8 @@ canvas{max-height:220px}
   </div>
   <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
     <div class="hbadge">Atualizado: <b id="lastUpdate">&mdash;</b></div>
-    <div class="hbadge">Pr&oacute;x. refresh: <b id="nextRefresh">30:00</b></div>
-    <button class="hbtn" onclick="loadAll()">&#8635; Atualizar</button>
+    <div class="hbadge">Pr&oacute;x. refresh: <b id="nextRefresh">10:00</b></div>
+    <button class="hbtn" id="btnAtualizar">&#8635; Atualizar</button>
   </div>
 </div>
 
@@ -103,58 +129,107 @@ canvas{max-height:220px}
 
 <div class="footer">Di&aacute;rio Clim&aacute;tico &mdash; Painel Executivo &mdash; <b>Sistema Meteorol&oacute;gico</b></div>
 
-<script>
+</div><!-- /mainContent -->
+
+<script type="module">
+import { initializeApp }                from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
+import { getFirestore, collection,
+         query, where, getDocs, orderBy } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDQ6KC0RAvA0xaxGqCYVRX3f2QRw3FE7ZU",
+  authDomain: "diario-climatico.firebaseapp.com",
+  projectId: "diario-climatico",
+  storageBucket: "diario-climatico.firebasestorage.app",
+  messagingSenderId: "164021604639",
+  appId: "1:164021604639:web:f4363e4e1aa2a2de15602a"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+const OWNER_UID = "IKgOWOLPuCRMvKNur6OH4fiE9ng1";
+let currentUID = OWNER_UID;
+let timerStarted = false;
+
+// ── Firebase query (substitui /api/dados) ────────────────────────
 async function apiQuery(start, end, limit) {
-  let url = "/api/dados?";
-  if (start) url += "start=" + start + "&";
-  if (end)   url += "end=" + end + "&";
-  if (limit) url += "limit=" + limit;
-  const r = await fetch(url);
-  if (!r.ok) { console.error("API erro:", r.status); return []; }
-  return r.json();
+  if (!currentUID) return [];
+
+  const results = [];
+
+  // Leituras de temperatura/umidade
+  const lSnap = await getDocs(query(
+    collection(db, "leituras"),
+    where("uid", "==", currentUID),
+    orderBy("data", "desc")
+  ));
+  for (const d of lSnap.docs) {
+    const r = d.data();
+    if (start && r.data < start) continue;
+    if (end   && r.data > end)   continue;
+    results.push({
+      data_registro: r.data,
+      temp_max:  r.temp,
+      temp_min:  r.temp,
+      chuva_mm:  0,
+      umidade:   r.umidade
+    });
+  }
+
+  // Chuvas
+  const cSnap = await getDocs(query(
+    collection(db, "chuvas"),
+    where("uid", "==", currentUID),
+    orderBy("data", "desc")
+  ));
+  for (const d of cSnap.docs) {
+    const r = d.data();
+    if (start && r.data < start) continue;
+    if (end   && r.data > end)   continue;
+    results.push({
+      data_registro: r.data,
+      temp_max:  null,
+      temp_min:  null,
+      chuva_mm:  r.mm,
+      umidade:   null
+    });
+  }
+
+  return limit ? results.slice(0, limit) : results;
 }
 
+// ── Utilitários ──────────────────────────────────────────────────
 function fmt(v, unit) {
   if (v === null || v === undefined) return "&mdash;";
   return v + (unit || "");
 }
-
 function fmtDate(d) {
   if (!d) return "&mdash;";
   const p = d.split("-");
   return p[2] + "/" + p[1] + "/" + p[0];
 }
-
 function today() {
-  const d = new Date();
-  d.setHours(d.getHours() - 3); // Brasilia UTC-3
+  const d = new Date(); d.setHours(d.getHours()-3);
   return d.toISOString().split("T")[0];
 }
-
 function yesterday() {
-  const d = new Date();
-  d.setHours(d.getHours() - 3);
-  d.setDate(d.getDate() - 1);
+  const d = new Date(); d.setHours(d.getHours()-3); d.setDate(d.getDate()-1);
   return d.toISOString().split("T")[0];
 }
-
 function getMonthRange() {
   const d = new Date(); d.setHours(d.getHours()-3);
   const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,"0");
   const last = new Date(y, d.getMonth()+1, 0).getDate();
   return {start: y+"-"+m+"-01", end: y+"-"+m+"-"+String(last).padStart(2,"0")};
 }
-
 function getYearRange() {
   const d = new Date(); d.setHours(d.getHours()-3);
-  const y = d.getFullYear();
-  return {start: y+"-01-01", end: y+"-12-31"};
+  return {start: d.getFullYear()+"-01-01", end: d.getFullYear()+"-12-31"};
 }
-
 function nomeMes(n) {
   return ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"][n];
 }
-
 function agg(rows, field) {
   const vals = rows.map(r => parseFloat(r[field])).filter(v => !isNaN(v));
   if (!vals.length) return {avg:null, sum:null, max:null, min:null};
@@ -162,6 +237,7 @@ function agg(rows, field) {
   return {avg:+(sum/vals.length).toFixed(1), sum:+sum.toFixed(1), max:Math.max(...vals), min:Math.min(...vals)};
 }
 
+// ── Cards HTML ────────────────────────────────────────────────────
 function dayCard(title, cls, date, max, min, chuva, umid) {
   return `<div class="dcard ${cls}">
     <div class="dtitle">${title}</div>
@@ -174,21 +250,21 @@ function dayCard(title, cls, date, max, min, chuva, umid) {
     </div>
   </div>`;
 }
-
 function rCard(ico, lbl, val, date) {
   return `<div class="rcard"><div class="rico">${ico}</div><div><div class="rlbl">${lbl}</div><div class="rval">${val}</div><div class="rdate">${date}</div></div></div>`;
 }
-
 function statCard(cls, ico, lbl, val, sub) {
   return `<div class="card ${cls}"><div class="cico">${ico}</div><div class="clbl">${lbl}</div><div class="cval">${val}</div><div class="csub">${sub}</div></div>`;
 }
 
+// ── Gráficos ──────────────────────────────────────────────────────
 let charts = {};
 function makeChart(id, cfg) {
   if (charts[id]) { charts[id].destroy(); delete charts[id]; }
   charts[id] = new Chart(document.getElementById(id).getContext("2d"), cfg);
 }
 
+// ── Carregamentos ─────────────────────────────────────────────────
 async function loadDays() {
   const tod = today(), yes = yesterday();
   const [tRows, yRows] = await Promise.all([
@@ -240,7 +316,7 @@ async function loadMonth() {
   document.getElementById("monthStats").innerHTML =
     statCard("cb","&#127783;&#65039;","Total de Chuva", fmt(tc2," mm"), "no m&ecirc;s atual") +
     statCard("cp","&#128167;","Umidade M&eacute;dia", fmt(au,"%"), "no m&ecirc;s atual") +
-    statCard("cy","&#127777;&#65039;","Temp. M&eacute;dia M&aacute;x", fmt(at,"&deg;C"), "no m&ecirc;s atual") +
+    statCard("cy","&#127777;&#65039;","Temp. M&eacute;dia", fmt(at,"&deg;C"), "no m&ecirc;s atual") +
     statCard("cg","&#128197;","Dias Registrados", Object.keys(byDay).length, "com dados no m&ecirc;s");
 }
 
@@ -279,76 +355,4 @@ async function loadYear() {
   document.getElementById("yearStats").innerHTML =
     statCard("cb","&#127783;&#65039;","Chuva Total Anual", fmt(tc3," mm"), "acumulado no ano") +
     statCard("cp","&#128167;","Umidade M&eacute;dia", fmt(au2,"%"), "no ano") +
-    statCard("cy","&#127777;&#65039;","Temp. M&eacute;dia M&aacute;x", fmt(at2,"&deg;C"), "no ano") +
-    statCard("cg","&#128197;","Meses com Dados", Object.keys(byMon).length, "registrados no ano");
-}
-
-async function loadCharts() {
-  const d30 = new Date(); d30.setHours(d30.getHours()-3); d30.setDate(d30.getDate()-30);
-  const d30str = d30.toISOString().split("T")[0];
-  const rows30 = await apiQuery(d30str, null, 500);
-
-  const byDay = {};
-  for (const r of rows30) {
-    if (!byDay[r.data_registro]) byDay[r.data_registro] = [];
-    byDay[r.data_registro].push(r);
-  }
-  const labels = Object.keys(byDay).sort().map(d=>d.split("-")[2]+"/"+d.split("-")[1]);
-  const sortedDays = Object.keys(byDay).sort();
-  const maxT = sortedDays.map(d=>agg(byDay[d],"temp_max").max);
-  const minT = sortedDays.map(d=>agg(byDay[d],"temp_min").min);
-  const chuvas = sortedDays.map(d=>agg(byDay[d],"chuva_mm").sum);
-
-  const gridColor = "#1E2A40", tickColor = "#94A3B8";
-  const scaleOpts = {x:{ticks:{color:tickColor,maxTicksLimit:10},grid:{color:gridColor}},y:{ticks:{color:tickColor},grid:{color:gridColor}}};
-
-  makeChart("chartTemp",{type:"line",data:{labels,datasets:[
-    {label:"Máx (°C)",data:maxT,borderColor:"#DC3545",backgroundColor:"rgba(220,53,69,.1)",tension:.4,fill:true,pointRadius:3},
-    {label:"Mín (°C)",data:minT,borderColor:"#00C6FF",backgroundColor:"rgba(0,198,255,.1)",tension:.4,fill:true,pointRadius:3}
-  ]},options:{responsive:true,plugins:{legend:{labels:{color:tickColor,font:{size:11}}}},scales:scaleOpts}});
-
-  makeChart("chartChuva",{type:"bar",data:{labels,datasets:[
-    {label:"Chuva (mm)",data:chuvas,backgroundColor:"rgba(0,198,255,.7)",borderColor:"#00C6FF",borderRadius:6}
-  ]},options:{responsive:true,plugins:{legend:{labels:{color:tickColor,font:{size:11}}}},scales:scaleOpts}});
-
-  const yr = getYearRange();
-  const rowsY = await apiQuery(yr.start, yr.end, 5000);
-  const byMes = {};
-  for (const r of rowsY) {
-    const m = parseInt(r.data_registro.split("-")[1])-1;
-    if (!byMes[m]) byMes[m]=[];
-    byMes[m].push(r);
-  }
-  const mLabels = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
-  const mesUmid  = mLabels.map((_,i)=>byMes[i]?agg(byMes[i],"umidade").avg:null);
-  const mesChuva = mLabels.map((_,i)=>byMes[i]?agg(byMes[i],"chuva_mm").sum:null);
-
-  makeChart("chartUmid",{type:"bar",data:{labels:mLabels,datasets:[
-    {label:"Umidade Média (%)",data:mesUmid,backgroundColor:"rgba(167,139,250,.7)",borderColor:"#A78BFA",borderRadius:6}
-  ]},options:{responsive:true,plugins:{legend:{labels:{color:tickColor,font:{size:11}}}},scales:{...scaleOpts,y:{...scaleOpts.y,max:100}}}});
-
-  makeChart("chartChuvaMes",{type:"bar",data:{labels:mLabels,datasets:[
-    {label:"Chuva (mm)",data:mesChuva,backgroundColor:"rgba(34,197,94,.7)",borderColor:"#22C55E",borderRadius:6}
-  ]},options:{responsive:true,plugins:{legend:{labels:{color:tickColor,font:{size:11}}}},scales:scaleOpts}});
-}
-
-let countdown = 600;
-function tick() {
-  const m=String(Math.floor(countdown/60)).padStart(2,"0");
-  const s=String(countdown%60).padStart(2,"0");
-  document.getElementById("nextRefresh").textContent=m+":"+s;
-  countdown--;
-  if (countdown<0){countdown=600;loadAll();}
-}
-
-async function loadAll() {
-  document.getElementById("lastUpdate").textContent = new Date().toLocaleTimeString("pt-BR");
-  countdown = 600;
-  await Promise.all([loadDays(), loadMonth(), loadYear(), loadCharts()]);
-}
-
-loadAll();
-setInterval(tick, 1000);
-</script>
-</body>
-</html>
+    statCard("cy","&#127777;&#65039;","Temp. M
